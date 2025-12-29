@@ -1,0 +1,2 @@
+pip install streamlit torch sentence-transformers scikit-learn pandas
+pip install pdfplumber python-docx
