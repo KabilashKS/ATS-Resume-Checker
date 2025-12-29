@@ -5,4 +5,7 @@ sentence-transformers
 scikit-learn
 pandas
 numpy
+pdfplumber
 PyPDF2
+python-docx
+
