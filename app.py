@@ -2,14 +2,13 @@ import streamlit as st
 import pandas as pd
 import torch
 import numpy as np
-from pathlib import Path
+import os
 
 from src.preprocess import preprocess_resumes, clean_text, extract_experience
 from src.embedding import encode_text
 from src.ranking import rank_candidates
 from src.resume_parser import parse_resume
 from sklearn.metrics.pairwise import cosine_similarity
-
 
 # -------------------------------
 # Page Config
@@ -32,7 +31,6 @@ def load_data():
     jobs = pd.read_csv("data/jobs.csv")
     return resumes, jobs
 
-
 resumes, jobs = load_data()
 
 
@@ -43,35 +41,48 @@ resumes = preprocess_resumes(resumes)
 
 
 # -------------------------------
-# Load / Create Embeddings (CPU SAFE)
+# Load / Create Embeddings (CPU Safe)
 # -------------------------------
 @st.cache_resource
 def load_embeddings(resumes, jobs):
-    emb_dir = Path("embeddings")
-    emb_dir.mkdir(exist_ok=True)
+    device = torch.device("cpu")
 
-    resume_emb_path = emb_dir / "resume_embeddings.pt"
-    job_emb_path = emb_dir / "job_embeddings.pt"
+    # Embedding paths
+    os.makedirs("embeddings", exist_ok=True)
+    resume_emb_path = "embeddings/resume_embeddings.pt"
+    job_emb_path = "embeddings/job_embeddings.pt"
 
-    # Resume embeddings
-    if resume_emb_path.exists():
-        resume_embeddings = torch.load(
-            resume_emb_path, map_location=torch.device("cpu")
-        )
+    # Safe resume text column
+    if "clean_text" in resumes.columns:
+        resume_texts = resumes["clean_text"].fillna("").tolist()
+    elif "resume_text" in resumes.columns:
+        resume_texts = resumes["resume_text"].fillna("").tolist()
     else:
-        resume_embeddings = encode_text(resumes["clean_text"].tolist())
+        st.error("❌ No usable text column found in resumes.csv")
+        st.stop()
+
+    # Safe job description column
+    if "job_description" in jobs.columns:
+        job_texts = jobs["job_description"].fillna("").tolist()
+    elif "description" in jobs.columns:
+        job_texts = jobs["description"].fillna("").tolist()
+    else:
+        st.error("❌ No usable text column found in jobs.csv")
+        st.stop()
+
+    # Load or generate resume embeddings
+    if not os.path.exists(resume_emb_path):
+        resume_embeddings = encode_text(resume_texts).to(device)
         torch.save(resume_embeddings, resume_emb_path)
-
-    # Job embeddings
-    job_col = "job_description" if "job_description" in jobs.columns else "description"
-
-    if job_emb_path.exists():
-        job_embeddings = torch.load(
-            job_emb_path, map_location=torch.device("cpu")
-        )
     else:
-        job_embeddings = encode_text(jobs[job_col].tolist())
+        resume_embeddings = torch.load(resume_emb_path, map_location=device)
+
+    # Load or generate job embeddings
+    if not os.path.exists(job_emb_path):
+        job_embeddings = encode_text(job_texts).to(device)
         torch.save(job_embeddings, job_emb_path)
+    else:
+        job_embeddings = torch.load(job_emb_path, map_location=device)
 
     return resume_embeddings, job_embeddings
 
@@ -170,4 +181,3 @@ if uploaded_resume is not None:
         st.warning("⚠ Moderate Match – Needs Review")
     else:
         st.error("❌ Low Match – Not Suitable")
-
