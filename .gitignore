@@ -26,5 +26,10 @@ data/job_descriptions/*
 .vscode/
 .idea/
 
+embeddings/
+*.pt
+__pycache__/
+
+
 # Logs
 *.log
