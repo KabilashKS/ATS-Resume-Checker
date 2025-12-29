@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environments
+.venv/
+venv/
+
+# Streamlit
+.streamlit/
+
+# ML Models
+*.pt
+*.pth
+*.pkl
+models/
+
+# Data
+data/resumes/*
+data/job_descriptions/*
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
